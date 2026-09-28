@@ -71,3 +71,6 @@ flowchart LR
 
     H --> I["Final Output<br/>QUERY_1: Actual Payment<br/>QUERY_2: Without Discounts"]
 ```
+
+This solution uses a LangChain multimodal pipeline to analyze supermarket receipt images and calculate the total amount paid and the total amount without discounts. A structured prompt is created to instruct the DeepSeek Vision model to identify the final payment amount and calculate the pre-discount amount while correctly handling discounts, promotions, and rounding. The prompt is connected to the `deepseek-v4-flash-vision-exp` model to form a reusable LangChain chain. Receipt images are converted into Data URLs and processed in batches using `chain.batch(inputs)`. The model returns the required values in a fixed format, which are extracted and validated using regular expressions. Finally, the extracted amounts are converted to `Decimal` values and aggregated across all receipts to produce the two required outputs: the total actual payment and the total amount that would have been paid without discounts.
+
