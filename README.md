@@ -51,28 +51,23 @@ homework runner.
 ## Homework 1 solution: 
 > to students: please fill your solution description here.
 
+## Chain Design
+
 ```mermaid
-flowchart TD
-    A([Start]) --> B[/Receipt Image(s)/]
+flowchart LR
+    A["Receipt Images"] --> B["Prompt Template<br/>Receipt analysis rules<br/>FINAL_PAYMENT<br/>NO_DISCOUNT"]
 
-    B --> C[Create Prompt Template<br/><br/>Define receipt analysis instructions<br/>Specify FINAL_PAYMENT and NO_DISCOUNT<br/>Set discount and rounding rules<br/>Require structured output]
+    B --> C["DeepSeek Vision Model<br/>deepseek-v4-flash-vision-exp<br/>Temperature = 0"]
 
-    C --> D[Initialize DeepSeek Vision Model<br/><br/>Model: deepseek-v4-flash-vision-exp<br/>Temperature: 0]
+    C --> D["LangChain Chain<br/>Prompt → Model"]
 
-    D --> E[Build LangChain Chain<br/><br/>Prompt | DeepSeek Vision Model]
+    D --> E["Image Preparation<br/>Convert images to Data URLs"]
 
-    E --> F[Prepare Image Inputs<br/><br/>Convert local images to Data URLs<br/>Insert image URLs into prompt]
+    E --> F["Batch Processing<br/>chain.batch(inputs)"]
 
-    F --> G[Batch Receipt Analysis<br/><br/>chain.batch(inputs)<br/>DeepSeek analyzes each receipt]
+    F --> G["Result Parsing<br/>Extract two values<br/>Regex validation"]
 
-    G --> H[Extract and Validate Results<br/><br/>Parse FINAL_PAYMENT and NO_DISCOUNT<br/>using regular expressions]
+    G --> H["Aggregation<br/>Decimal calculation<br/>Sum all receipts"]
 
-    H --> I{Both values found?}
-
-    I -->|No| J[Raise Error]
-    I -->|Yes| K[Calculate Totals<br/><br/>Convert values to Decimal<br/>Accumulate all receipt amounts]
-
-    K --> L[/Final Output<br/><br/>QUERY_1: Total Actual Payment<br/>QUERY_2: Total Amount Without Discounts/]
-
-    L --> M([End])
+    H --> I["Final Output<br/>QUERY_1: Actual Payment<br/>QUERY_2: Without Discounts"]
 ```
