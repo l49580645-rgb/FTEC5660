@@ -62,8 +62,68 @@ def build_chain() -> Any:
     Use the vision-capable DeepSeek Flash model named
     ``deepseek-v4-flash-vision-exp``. The API key is loaded from .env.
     """
-    ### YOUR CODE HERE
-    return None
+    from langchain_core.prompts import ChatPromptTemplate
+    from langchain_deepseek import ChatDeepSeek
+
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            (
+                "system",
+                """
+You are an expert supermarket receipt analysis assistant.
+
+Analyze exactly ONE supermarket receipt image.
+
+Extract the following two values:
+
+1. FINAL_PAYMENT:
+The actual amount paid for this receipt after rounding.
+Use the final payment amount shown on the receipt.
+
+2. NO_DISCOUNT:
+The amount that would have been paid without discounts,
+promotions, coupons, or other price reductions.
+
+To calculate NO_DISCOUNT:
+- Start with SUBTOTAL.
+- Add back all discount or promotion amounts.
+- Do NOT add back ROUNDING.
+- Do not count the same discount twice.
+
+Return exactly two lines:
+
+FINAL_PAYMENT=xxx.xx
+NO_DISCOUNT=xxx.xx
+
+Do not provide explanations.
+Do not provide any other numbers.
+""",
+            ),
+            (
+                "human",
+                [
+                    {
+                        "type": "text",
+                        "text": "Analyze this supermarket receipt.",
+                    },
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": "{image_url}",
+                            "detail": "high",
+                        },
+                    },
+                ],
+            ),
+        ]
+    )
+
+    model = ChatDeepSeek(
+        model="deepseek-v4-flash-vision-exp",
+        temperature=0,
+    )
+
+    return prompt | model
 
 
 def answer_queries(chain: Any, images: list[Path]) -> dict[str, Any]:
@@ -78,9 +138,54 @@ def answer_queries(chain: Any, images: list[Path]) -> dict[str, Any]:
     multimodal human messages. LangChain's ``batch`` method is one simple way
     to process independent receipt-extraction prompts in parallel.
     """
-    ### YOUR CODE HERE
-    _ = (chain, images)
-    return {QUERY_1: DUMMY_RESPONSE, QUERY_2: DUMMY_RESPONSE}
+   inputs = [
+        {
+            "image_url": image_data_url(image)
+        }
+        for image in images
+    ]
+
+    responses = chain.batch(inputs)
+
+    total_spent = Decimal("0.00")
+    total_no_discount = Decimal("0.00")
+
+    for response in responses:
+        text = response_text(response)
+
+        final_match = re.search(
+            r"FINAL_PAYMENT\s*=\s*([\d,]+(?:\.\d{1,2})?)",
+            text,
+            re.IGNORECASE,
+        )
+
+        no_discount_match = re.search(
+            r"NO_DISCOUNT\s*=\s*([\d,]+(?:\.\d{1,2})?)",
+            text,
+            re.IGNORECASE,
+        )
+
+        if not final_match or not no_discount_match:
+            raise ValueError(
+                "Could not parse model response:\n"
+                + text
+            )
+
+        final_amount = Decimal(
+            final_match.group(1).replace(",", "")
+        )
+
+        no_discount_amount = Decimal(
+            no_discount_match.group(1).replace(",", "")
+        )
+
+        total_spent += final_amount
+        total_no_discount += no_discount_amount
+
+    return {
+        QUERY_1: f"HK${total_spent:.2f}",
+        QUERY_2: f"HK${total_no_discount:.2f}",
+    }
 
 
 # Everything below is provided runner/scoring code. No edits are needed.
